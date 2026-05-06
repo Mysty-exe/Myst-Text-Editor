@@ -6,6 +6,7 @@ General Usage:
 
 Shortcuts:
   Ctrl-S -           Save
+  Ctrl-R -           Terminal
   Ctrl-F -           Find/Replace
   Ctrl-E -           Settings/Menu
   Ctrl-P -           Preferences

@@ -53,6 +53,7 @@ int main(int argc, char **argv)
 
     use_default_colors();
     start_color();
+    set_escdelay(25);
 
     App app(w, h, projectPath);
     app.init();

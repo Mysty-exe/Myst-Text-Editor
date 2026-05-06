@@ -18,6 +18,7 @@ private:
     string state, findTxt, replaceTxt, filenameTxt, confirmTxt;
     int width, height;
     int cursorX, cursorY;
+    int startX, lineX;
     int matches;
     bool error;
     bool modified;
@@ -46,6 +47,7 @@ public:
     void insertCharacter(char character);
     void backspace();
     void tab();
+    void ctrlV();
     bool enter();
     void leftArrow();
     void rightArrow();

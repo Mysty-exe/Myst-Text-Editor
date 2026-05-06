@@ -371,8 +371,8 @@ Returns:
     wrefresh(win);
     getch();
 
-    werase(win);
-    wrefresh(win);
+    // werase(win);
+    // wrefresh(win);
 }
 
 void App::checkForSpecialChars(int character)
@@ -645,6 +645,20 @@ Returns:
         status.tab();
         break;
 
+    case 27:
+        if (status.getState() == "save as")
+        {
+            editor.setState("");
+            status.resetStatus();
+            editor.writeToScreen(status);
+            MODE = 1;
+        }
+        break;
+
+    case (86 & 0x1f):
+        status.ctrlV();
+        break;
+
     case 10:
         if (MODE == 2)
         {
@@ -734,7 +748,6 @@ Returns:
         {
             if (editor.getFile().unsavedFile())
             {
-                // clear();
                 status.resetStatus();
                 status.setState("quit");
                 editor.writeToScreen(status);
@@ -745,11 +758,6 @@ Returns:
                 MODE = 0;
             }
         }
-        break;
-
-    case (69 & 0x1f):
-        status.setState("");
-        MODE = 3;
         break;
 
     case (80 & 0x1f):
@@ -1070,7 +1078,6 @@ Returns:
     {
         if (editor.getState() == "ctrlshifts")
         {
-            // clear();
             status.setState("save as");
             editor.writeToScreen(status);
             MODE = 6;

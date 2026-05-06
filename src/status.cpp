@@ -41,6 +41,7 @@ Returns:
     width = w;
     height = h;
     cursorX = cursorY = 0;
+    startX = lineX = 0;
     line = "";
     date = "";
     state = "";
@@ -212,10 +213,28 @@ Returns:
 
     delwin(statusWindow);
     statusWindow = newwin(1, width, height - 1, 0);
-    // getmaxyx(statusWindow, height, width);
     keypad(statusWindow, true);
     keypad(statusWindow, true);
     wrefresh(statusWindow);
+
+    if (state == "find")
+    {
+        cursorX = min((int)findTxt.size(), width / 3);
+        lineX = findTxt.size();
+        startX = 0;
+    }
+    else if (state == "replace")
+    {
+        cursorX = min((int)replaceTxt.size(), width / 3);
+        lineX = replaceTxt.size();
+        startX = 0;
+    }
+    else if (state == "save as")
+    {
+        cursorX = min((int)filenameTxt.size(), width - 15);
+        lineX = filenameTxt.size();
+        startX = 0;
+    }
 }
 
 bool StatusBar::endOfLine()
@@ -229,15 +248,15 @@ Returns:
 {
     if (state == "find")
     {
-        return cursorX >= (int)findTxt.length() - 1;
+        return lineX >= (int)findTxt.length();
     }
     else if (state == "replace")
     {
-        return cursorX >= (int)replaceTxt.length() - 1;
+        return lineX >= (int)replaceTxt.length();
     }
     else if (state == "save as")
     {
-        return cursorX >= (int)filenameTxt.length() - 1;
+        return lineX >= (int)filenameTxt.length();
     }
     else if (state == "save" || state == "quit")
     {
@@ -261,27 +280,27 @@ Returns:
 {
     if (state == "find")
     {
-        if ((int)findTxt.length() < width / 5)
-        {
-            cursorX += 1;
-            findTxt = findTxt + character;
-        }
+        lineX += 1;
+        cursorX += 1;
+        findTxt = findTxt + character;
+        if (cursorX > width / 3)
+            cursorX = width / 3;
     }
     else if (state == "replace")
     {
-        if ((int)replaceTxt.length() < width / 5)
-        {
-            cursorX += 1;
-            replaceTxt = replaceTxt + character;
-        }
+        lineX += 1;
+        cursorX += 1;
+        replaceTxt = replaceTxt + character;
+        if (cursorX > width / 3)
+            cursorX = width / 3;
     }
     else if (state == "save as")
     {
-        if ((int)filenameTxt.length() < width)
-        {
-            cursorX += 1;
-            filenameTxt = filenameTxt + character;
-        }
+        lineX += 1;
+        cursorX += 1;
+        filenameTxt = filenameTxt + character;
+        if (cursorX > width - 15)
+            cursorX = width - 15;
     }
     else if (state == "quit" || state == "save")
     {
@@ -304,26 +323,38 @@ Returns:
 {
     if (state == "find")
     {
-        if ((int)findTxt.length() < width / 5)
-        {
-            findTxt = findTxt.substr(0, cursorX) + character + findTxt.substr(cursorX, findTxt.length());
+        findTxt = findTxt.substr(0, lineX) + character + findTxt.substr(lineX, findTxt.length());
+        lineX += 1;
+        if (findTxt.size() <= width / 3)
             cursorX += 1;
+        if (cursorX == 0)
+        {
+            leftArrow();
+            rightArrow();
         }
     }
     else if (state == "replace")
     {
-        if ((int)replaceTxt.length() < width / 5)
-        {
-            replaceTxt = replaceTxt.substr(0, cursorX) + character + replaceTxt.substr(cursorX, replaceTxt.length());
+        replaceTxt = replaceTxt.substr(0, lineX) + character + replaceTxt.substr(lineX, replaceTxt.length());
+        lineX += 1;
+        if (replaceTxt.size() <= width / 3)
             cursorX += 1;
+        if (cursorX == 0)
+        {
+            leftArrow();
+            rightArrow();
         }
     }
     else if (state == "save as")
     {
-        if ((int)filenameTxt.length() < width / 5)
-        {
-            filenameTxt = filenameTxt.substr(0, cursorX) + character + filenameTxt.substr(cursorX, filenameTxt.length());
+        filenameTxt = filenameTxt.substr(0, lineX) + character + filenameTxt.substr(lineX, filenameTxt.length());
+        lineX += 1;
+        if (filenameTxt.size() <= width - 15)
             cursorX += 1;
+        if (cursorX == 0)
+        {
+            leftArrow();
+            rightArrow();
         }
     }
 }
@@ -339,26 +370,32 @@ Returns:
 {
     if (state == "find")
     {
-        if (cursorX > 0)
+        if (lineX > 0)
         {
-            cursorX -= 1;
-            findTxt = findTxt.erase(cursorX, 1);
+            lineX -= 1;
+            findTxt = findTxt.erase(lineX, 1);
+            if (cursorX > 0 && findTxt.size() < width / 3)
+                cursorX -= 1;
         }
     }
     else if (state == "replace")
     {
-        if (cursorX > 0)
+        if (lineX > 0)
         {
-            cursorX -= 1;
-            replaceTxt = replaceTxt.erase(cursorX, 1);
+            lineX -= 1;
+            replaceTxt = replaceTxt.erase(lineX, 1);
+            if (cursorX > 0 && replaceTxt.size() < width / 3)
+                cursorX -= 1;
         }
     }
     else if (state == "save as")
     {
-        if (cursorX > 0)
+        if (lineX > 0)
         {
-            cursorX -= 1;
-            filenameTxt = filenameTxt.erase(cursorX, 1);
+            lineX -= 1;
+            filenameTxt = filenameTxt.erase(lineX, 1);
+            if (cursorX > 0 && filenameTxt.size() < width - 15)
+                cursorX -= 1;
         }
     }
     else if (state == "quit" || state == "save")
@@ -382,13 +419,53 @@ Returns:
 {
     if (state == "find")
     {
-        cursorX = replaceTxt.length();
+        cursorX = min((int)replaceTxt.size(), width / 3);
+        lineX = replaceTxt.size();
+        startX = 0;
+
         state = "replace";
     }
     else if (state == "replace")
     {
-        cursorX = findTxt.length();
+        cursorX = min((int)findTxt.size(), width / 3);
+        lineX = findTxt.size();
+        startX = 0;
+
         state = "find";
+    }
+}
+
+void StatusBar::ctrlV()
+{
+    if (state == "quit")
+        return;
+
+    FILE *pipe = popen("xclip -selection clipboard -o", "r");
+    if (pipe)
+    {
+        char buffer[128];
+        string result;
+        while (fgets(buffer, sizeof(buffer), pipe) != nullptr)
+        {
+            result += buffer;
+        }
+
+        pclose(pipe);
+
+        for (int x = 0; x < (int)result.length(); x++)
+        {
+            if (result[x] == '\n')
+            {
+                addCharacter(' ');
+            }
+            else if (result[x] != '\r')
+            {
+                if (endOfLine())
+                    addCharacter(result[x]);
+                else
+                    insertCharacter(result[x]);
+            }
+        }
     }
 }
 
@@ -417,9 +494,15 @@ Returns:
  */
 
 {
-    if (cursorX > 0)
+    if (lineX > 0)
     {
+        lineX--;
         cursorX--;
+        if (cursorX < 0)
+        {
+            startX += 1;
+            cursorX = 0;
+        }
     }
 }
 
@@ -434,23 +517,41 @@ Returns:
 {
     if (state == "find")
     {
-        if (cursorX <= (int)findTxt.length() - 1)
+        if (lineX <= (int)findTxt.length() - 1)
         {
+            lineX++;
             cursorX++;
+            if (cursorX > width / 3)
+            {
+                startX -= 1;
+                cursorX = width / 3;
+            }
         }
     }
     else if (state == "replace")
     {
-        if (cursorX <= (int)replaceTxt.length() - 1)
+        if (lineX <= (int)replaceTxt.length() - 1)
         {
+            lineX++;
             cursorX++;
+            if (cursorX > width / 3)
+            {
+                startX -= 1;
+                cursorX = width / 3;
+            }
         }
     }
     else if (state == "save as")
     {
-        if (cursorX <= (int)filenameTxt.length() - 1)
+        if (lineX <= (int)filenameTxt.length() - 1)
         {
+            lineX++;
             cursorX++;
+            if (cursorX > width / 3)
+            {
+                startX -= 1;
+                cursorX = width / 3;
+            }
         }
     }
 }
@@ -496,6 +597,7 @@ Returns:
  */
 
 {
+    curs_set(0);
     mvwprintw(statusWindow, 0, width - (int)date.length(), date.c_str(), "%s");
 }
 
@@ -565,14 +667,20 @@ Returns:
     wprintw(statusWindow, "Find: ");
 
     wattroff(statusWindow, COLOR_PAIR(1));
-    wprintw(statusWindow, findTxt.c_str(), "%s");
-    wprintw(statusWindow, "   ");
+    if (findTxt.size() > width / 3)
+        wprintw(statusWindow, findTxt.substr(findTxt.size() - (width / 3) - startX, width / 3).c_str(), "%s");
+    else
+        wprintw(statusWindow, findTxt.c_str(), "%s");
+    wprintw(statusWindow, "     ");
 
     wattron(statusWindow, COLOR_PAIR(1));
     wprintw(statusWindow, "Replace: ");
 
     wattroff(statusWindow, COLOR_PAIR(1));
-    wprintw(statusWindow, replaceTxt.c_str(), "%s");
+    if (replaceTxt.size() > width / 3)
+        wprintw(statusWindow, replaceTxt.substr(replaceTxt.size() - (width / 3) - startX, width / 3).c_str(), "%s");
+    else
+        wprintw(statusWindow, replaceTxt.c_str(), "%s");
 
     wattron(statusWindow, COLOR_PAIR(1));
     mvwprintw(statusWindow, 0, width - (9 + to_string(matches).length()), "Matches: ");
@@ -586,7 +694,7 @@ Returns:
     }
     else if (state == "replace")
     {
-        wmove(statusWindow, 0, cursorX + findTxt.length() + 18);
+        wmove(statusWindow, 0, cursorX + min((int)findTxt.size(), width / 3) + 20);
     }
     wrefresh(statusWindow);
 }
@@ -607,6 +715,8 @@ Returns:
     confirmTxt = "";
     matches = 0;
     cursorX = 0;
+    lineX = 0;
+    startX = 0;
 }
 
 void StatusBar::saveAs()
@@ -623,7 +733,10 @@ Returns:
     wattron(statusWindow, COLOR_PAIR(1));
     wprintw(statusWindow, "File Name: ");
     wattroff(statusWindow, COLOR_PAIR(1));
-    mvwprintw(statusWindow, 0, 11, filenameTxt.c_str(), "%s");
+    if (filenameTxt.size() > width - 15)
+        mvwprintw(statusWindow, 0, 11, filenameTxt.substr(filenameTxt.size() - (width - 15) - startX, width - 15).c_str(), "%s");
+    else
+        mvwprintw(statusWindow, 0, 11, filenameTxt.c_str(), "%s");
 
     wmove(statusWindow, 0, cursorX + 11);
     wrefresh(statusWindow);

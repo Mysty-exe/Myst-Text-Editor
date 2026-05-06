@@ -45,7 +45,6 @@ Returns:
 	maxHeight = 1000;
 	width = w;
 	height = h;
-	height -= 1;
 	lineNumbersWidth = 4;
 	cursorX = cursorY = 0;
 	lineX = lineY = 0;
@@ -535,7 +534,6 @@ Returns:
 
 	delwin(textPad);
 	delwin(linesPad);
-	height -= 1;
 
 	lineNumbersWidth = to_string(file.getLines().size()).length() + 3;
 
@@ -595,7 +593,7 @@ Returns:
 		endHightlight();
 		file.addChar(lineY, character);
 	}
-	if (cursorX < width - 1) // Check if cursor is at the end of a line
+	if (cursorX < width - 4) // Check if cursor is at the end of a line
 	{
 		cursorX++;
 	}
@@ -705,7 +703,7 @@ Returns:
 	}
 
 	lineX++;
-	if (cursorX < width - 1) // Check if cursor is at the end of a line
+	if (cursorX < width - 4) // Check if cursor is at the end of a line
 	{
 		cursorX++;
 	}
@@ -818,7 +816,7 @@ Returns:
 
 		if (cursorX == 0 && lineX != 0)
 		{
-			cursorX = width - 1;
+			cursorX = width - 4;
 			cursorY--;
 		}
 	}
@@ -911,13 +909,13 @@ Returns:
 		{
 			lineX += tabSize;
 			file.addChar(lineY, '\t');
-			if (cursorX + (tabSize - 1) < width - 1) // Check if cursor is at the end of a line
+			if (cursorX + (tabSize - 1) < width - 4) // Check if cursor is at the end of a line
 			{
 				cursorX += tabSize;
 			}
 			else
 			{
-				cursorX = tabSize - ((width - 1) - cursorX);
+				cursorX = tabSize - ((width - 4) - cursorX);
 				cursorY++;
 			}
 		}
@@ -925,13 +923,13 @@ Returns:
 		{
 			file.insertChar(lineY, getTabX(lineY, lineX), '\t');
 			lineX += tabSize;
-			if (cursorX + tabSize < width - 1) // Check if cursor is at the end of a line
+			if (cursorX + tabSize < width - 4) // Check if cursor is at the end of a line
 			{
 				cursorX += tabSize;
 			}
 			else
 			{
-				cursorX = tabSize - ((width - 1) - cursorX);
+				cursorX = tabSize - ((width - 4) - cursorX);
 				cursorY++;
 			}
 		}
@@ -1761,7 +1759,7 @@ Returns:
 	{
 		for (int x = 0; x < (int)file.getLines().size(); x++)
 		{
-			file.setLine(x, file.replaceAll(file.getLine(x), from, to));
+			file.setLine(x, file.replaceAll(file.getLine(x), file.replaceAll(from, R"(\t)", "\t"), file.replaceAll(to, R"(\t)", "\t")));
 		}
 		lineX = file.getLineLength(lineY);
 		cursorX = getWrappedX(lineX);
@@ -1784,7 +1782,7 @@ Returns:
 	while (true)
 	{
 		// Handles line wrapping
-		if ((int)copiedLine.length() <= (width - 1))
+		if ((int)copiedLine.length() <= (width - 4))
 		{
 			string text = copiedLine;
 			mvwprintw(textPad, tempY, 0, text.c_str(), "%s");
@@ -1793,10 +1791,10 @@ Returns:
 		}
 		else
 		{
-			string text = copiedLine.substr(0, width - 1);
+			string text = copiedLine.substr(0, width - 4);
 			mvwprintw(textPad, tempY, 0, text.c_str(), "%s");
 			tempY++;
-			copiedLine.erase(0, width - 1);
+			copiedLine.erase(0, width - 4);
 		}
 	}
 }
@@ -1842,7 +1840,7 @@ Returns:
 		}
 
 		printX += 1;
-		if (printX == width - 1)
+		if (printX == width - 4)
 		{
 			printX = 0;
 			tempY++;
@@ -1920,7 +1918,7 @@ Returns:
 
 			tempLineX += 1;
 			printX += 1;
-			if (printX == width - 1)
+			if (printX == width - 4)
 			{
 				printX = 0;
 				tempY++;
@@ -1943,6 +1941,8 @@ Returns:
  */
 
 {
+	findTxt = file.replaceAll(findTxt, R"(\t)", "\t");
+
 	vector<int> index = {};
 	if (findTxt != "")
 	{
@@ -1965,11 +1965,27 @@ Returns:
 		{
 			wattron(textPad, COLOR_PAIR(14));
 		}
-		mvwaddch(textPad, tempY, printX, copiedLine[x]);
+		if (copiedLine[x] == '\t')
+		{
+			for (int i = 0; i < tabSpaces.size(); i++)
+			{
+				mvwaddch(textPad, tempY, printX, ' ');
+				printX++;
+				if (printX == width - 4)
+				{
+					printX = 0;
+					tempY++;
+				}
+			}
+		}
+		else
+		{
+			mvwaddch(textPad, tempY, printX, copiedLine[x]);
+			printX += 1;
+		}
 		wattroff(textPad, COLOR_PAIR(14));
 
-		printX += 1;
-		if (printX == width - 1)
+		if (printX == width - 4)
 		{
 			printX = 0;
 			tempY++;
@@ -1991,6 +2007,8 @@ Returns:
  */
 
 {
+	findTxt = file.replaceAll(findTxt, R"(\t)", "\t");
+
 	vector<int> index = {};
 	if (findTxt != "")
 	{
@@ -2023,13 +2041,31 @@ Returns:
 			{
 				wattron(textPad, COLOR_PAIR(color));
 			}
-			mvwaddch(textPad, tempY, printX, lexeme.first[x]);
+
+			if (lexeme.first[x] == '\t')
+			{
+				for (int i = 0; i < tabSpaces.size(); i++)
+				{
+					mvwaddch(textPad, tempY, printX, ' ');
+					printX++;
+					if (printX == width - 4)
+					{
+						printX = 0;
+						tempY++;
+					}
+				}
+			}
+			else
+			{
+				mvwaddch(textPad, tempY, printX, lexeme.first[x]);
+				printX += 1;
+			}
+
 			wattroff(textPad, COLOR_PAIR(color + 12));
 			wattroff(textPad, COLOR_PAIR(color));
 
 			tempLineX += 1;
-			printX += 1;
-			if (printX == width - 1)
+			if (printX == width - 4)
 			{
 				printX = 0;
 				tempY++;
@@ -2199,10 +2235,10 @@ Returns:
 			wattroff(linesPad, COLOR_PAIR(1));
 		}
 
-		string copiedLine = file.replaceAll(line, "\t", tabSpaces); // Replaces the tabspaces
-
 		if (status.getState() != "find" && status.getState() != "replace")
 		{
+			string copiedLine = file.replaceAll(line, "\t", tabSpaces); // Replaces the tabspaces
+
 			if (highlighting)
 			{
 				if (lineNum - 1 > orderHighlight()[0].second && lineNum - 1 < orderHighlight()[1].second)
@@ -2248,6 +2284,8 @@ Returns:
 		}
 		else
 		{
+			string copiedLine = line; // Replaces the tabspaces
+
 			if (useLexer)
 			{
 				findPrintLineByLexeme(copiedLine, status.getFindTxt(), tempY);
@@ -2277,8 +2315,8 @@ Returns:
 		wattroff(linesPad, COLOR_PAIR(1));
 	}
 
-	prefresh(linesPad, scroll, 0, 0, 0, height - 2, lineNumbersWidth);
-	prefresh(textPad, scroll, 0, 0, lineNumbersWidth, height - 2, width + (lineNumbersWidth - 1));
+	prefresh(linesPad, scroll, 0, 0, 0, height - 3, lineNumbersWidth);
+	prefresh(textPad, scroll, 0, 0, lineNumbersWidth, height - 3, width + (lineNumbersWidth - 1));
 
 	if (cursorY + 1 > scroll && cursorY + 1 < scroll + height)
 	{
@@ -2304,9 +2342,9 @@ Returns:
 {
 	while (true)
 	{
-		if (x > (width - 1))
+		if (x > (width - 4))
 		{
-			x -= (width - 1);
+			x -= (width - 4);
 		}
 		else
 		{
@@ -2331,7 +2369,7 @@ Returns:
 	int counter = 1;
 	while (true)
 	{
-		if (x > width - 1)
+		if (x > width - 4)
 		{
 			x -= (width);
 			counter += 1;

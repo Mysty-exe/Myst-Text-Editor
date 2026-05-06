@@ -67,6 +67,7 @@ public:
     bool checkSpecialChar(char character);
     bool checkOtherChar(char character);
     string getState();
+    void setState(string s) { state = s; };
 
     int getCursorX();
     int getCursorY();
