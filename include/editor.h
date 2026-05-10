@@ -139,5 +139,6 @@ public:
     int getWrappedX(int x);
     int getWrappedY(int x);
     int getWrappedCursorY(int y, int x);
+    int getWrappedCursorY2(int y, int x);
     int getTabX(int currentLine, int x);
 };

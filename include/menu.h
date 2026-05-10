@@ -3,6 +3,7 @@
 #include <ncurses.h>
 #include <panel.h>
 #include <editor.h>
+#include <filesystem>
 #include <vector>
 #include <string>
 #include "file.h"

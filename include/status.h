@@ -1,5 +1,9 @@
 #pragma once
 #include <iostream>
+#include <fstream>
+#include <filesystem>
+#include <cmath>
+#include <algorithm>
 #include <ctime>
 #include <format>
 #include <vector>
@@ -15,22 +19,25 @@ class StatusBar
 {
 private:
     string line, date;
-    string state, findTxt, replaceTxt, filenameTxt, confirmTxt;
-    int width, height;
-    int cursorX, cursorY;
+    string state, findTxt, replaceTxt, filenameTxt, confirmTxt, terminalTxt;
+    int width, height, statusHeight;
+    int cursorX, cursorY, scroll;
     int startX, lineX;
     int matches;
+    int currentCmd;
     bool error;
     bool modified;
+    vector<string> terminalStack, cmdHistory;
 
 public:
-    WINDOW *statusWindow;
+    WINDOW *statusPad;
 
     StatusBar();
     StatusBar(int w, int h);
 
     int getWidth();
     void setWidth(int w);
+    int getStatusHeight() { return statusHeight; };
     int getCursorX();
     string getState();
     void setState(string s);
@@ -60,5 +67,11 @@ public:
     void resetStatus();
     void saveAs();
     void confirm();
+    void terminal();
+    void runCommand(std::string dir);
+    void previousCmd();
+    void nextCmd();
+    void scrollUpTerminal();
+    void scrollDownTerminal();
     void clear();
 };

@@ -49,10 +49,15 @@ Returns:
     replaceTxt = "";
     filenameTxt = "";
     confirmTxt = "";
+    terminalTxt = "";
     matches = 0;
     error = false;
     modified = false;
-    statusWindow = newwin(1, width, height - 1, 0);
+    statusPad = newpad(100, width);
+    statusHeight = 1;
+    scroll = 0;
+    currentCmd = 0;
+    cmdHistory.push_back("");
 }
 
 int StatusBar::getWidth()
@@ -118,6 +123,14 @@ Returns:
  */
 
 {
+    wbkgd(statusPad, COLOR_PAIR(1));
+    werase(statusPad);
+    wrefresh(statusPad);
+    if (s == "terminal")
+    {
+        statusHeight = 6;
+        scroll = terminalStack.size() + 1;
+    }
     state = s;
 }
 
@@ -211,11 +224,12 @@ Returns:
     this->width = width;
     this->height = height;
 
-    delwin(statusWindow);
-    statusWindow = newwin(1, width, height - 1, 0);
-    keypad(statusWindow, true);
-    keypad(statusWindow, true);
-    wrefresh(statusWindow);
+    delwin(statusPad);
+    statusPad = newpad(100, width);
+
+    wbkgd(statusPad, COLOR_PAIR(1));
+    keypad(statusPad, true);
+    prefresh(statusPad, 0, 0, height - statusHeight, 0, height - 1, width - 1);
 
     if (state == "find")
     {
@@ -253,6 +267,10 @@ Returns:
     else if (state == "replace")
     {
         return lineX >= (int)replaceTxt.length();
+    }
+    else if (state == "terminal")
+    {
+        return lineX >= (int)terminalTxt.length();
     }
     else if (state == "save as")
     {
@@ -294,12 +312,20 @@ Returns:
         if (cursorX > width / 3)
             cursorX = width / 3;
     }
+    else if (state == "terminal")
+    {
+        lineX += 1;
+        cursorX += 1;
+        terminalTxt = terminalTxt + character;
+        if (cursorX > width - 10)
+            cursorX = width - 10;
+    }
     else if (state == "save as")
     {
         lineX += 1;
         cursorX += 1;
         filenameTxt = filenameTxt + character;
-        if (cursorX > width - 15)
+        if (cursorX > (int)width - 15)
             cursorX = width - 15;
     }
     else if (state == "quit" || state == "save")
@@ -325,7 +351,7 @@ Returns:
     {
         findTxt = findTxt.substr(0, lineX) + character + findTxt.substr(lineX, findTxt.length());
         lineX += 1;
-        if (findTxt.size() <= width / 3)
+        if ((int)findTxt.size() <= (int)width / 3)
             cursorX += 1;
         if (cursorX == 0)
         {
@@ -337,7 +363,19 @@ Returns:
     {
         replaceTxt = replaceTxt.substr(0, lineX) + character + replaceTxt.substr(lineX, replaceTxt.length());
         lineX += 1;
-        if (replaceTxt.size() <= width / 3)
+        if ((int)replaceTxt.size() <= (int)width / 3)
+            cursorX += 1;
+        if (cursorX == 0)
+        {
+            leftArrow();
+            rightArrow();
+        }
+    }
+    else if (state == "terminal")
+    {
+        terminalTxt = terminalTxt.substr(0, lineX) + character + terminalTxt.substr(lineX, terminalTxt.length());
+        lineX += 1;
+        if ((int)terminalTxt.size() <= (int)width - 10)
             cursorX += 1;
         if (cursorX == 0)
         {
@@ -349,7 +387,7 @@ Returns:
     {
         filenameTxt = filenameTxt.substr(0, lineX) + character + filenameTxt.substr(lineX, filenameTxt.length());
         lineX += 1;
-        if (filenameTxt.size() <= width - 15)
+        if ((int)filenameTxt.size() <= (int)width - 15)
             cursorX += 1;
         if (cursorX == 0)
         {
@@ -374,7 +412,7 @@ Returns:
         {
             lineX -= 1;
             findTxt = findTxt.erase(lineX, 1);
-            if (cursorX > 0 && findTxt.size() < width / 3)
+            if (cursorX > 0 && (int)findTxt.size() < (int)width / 3)
                 cursorX -= 1;
         }
     }
@@ -384,7 +422,17 @@ Returns:
         {
             lineX -= 1;
             replaceTxt = replaceTxt.erase(lineX, 1);
-            if (cursorX > 0 && replaceTxt.size() < width / 3)
+            if (cursorX > 0 && (int)replaceTxt.size() < (int)width / 3)
+                cursorX -= 1;
+        }
+    }
+    else if (state == "terminal")
+    {
+        if (lineX > 0)
+        {
+            lineX -= 1;
+            terminalTxt = terminalTxt.erase(lineX, 1);
+            if (cursorX > 0 && (int)terminalTxt.size() < (int)width - 10)
                 cursorX -= 1;
         }
     }
@@ -394,7 +442,7 @@ Returns:
         {
             lineX -= 1;
             filenameTxt = filenameTxt.erase(lineX, 1);
-            if (cursorX > 0 && filenameTxt.size() < width - 15)
+            if (cursorX > 0 && (int)filenameTxt.size() < (int)width - 15)
                 cursorX -= 1;
         }
     }
@@ -541,6 +589,19 @@ Returns:
             }
         }
     }
+    else if (state == "terminal")
+    {
+        if (lineX <= (int)terminalTxt.length() - 1)
+        {
+            lineX++;
+            cursorX++;
+            if (cursorX > width - 10)
+            {
+                startX -= 1;
+                cursorX = width - 10;
+            }
+        }
+    }
     else if (state == "save as")
     {
         if (lineX <= (int)filenameTxt.length() - 1)
@@ -598,7 +659,7 @@ Returns:
 
 {
     curs_set(0);
-    mvwprintw(statusWindow, 0, width - (int)date.length(), date.c_str(), "%s");
+    mvwprintw(statusPad, statusHeight - 1, width - (int)date.length(), date.c_str(), "%s");
 }
 
 void StatusBar::setInfo(string text, bool err = false)
@@ -630,25 +691,26 @@ Returns:
  */
 
 {
+    leaveok(statusPad, true);
+
     getDate();
     if (modified || forceUpdate)
     {
-        curs_set(0);
+        werase(statusPad);
+        wrefresh(statusPad);
+
         modified = false;
-        clear();
         displayDate();
         if (error)
-        {
-            wattron(statusWindow, COLOR_PAIR(12));
-        }
+            wattron(statusPad, COLOR_PAIR(12));
         else
-        {
-            wattron(statusWindow, COLOR_PAIR(1));
-        }
-        mvwprintw(statusWindow, 0, 0, line.c_str(), "%s");
-        wattroff(statusWindow, COLOR_PAIR(1));
-        wattroff(statusWindow, COLOR_PAIR(12));
-        wrefresh(statusWindow);
+            wattron(statusPad, COLOR_PAIR(1));
+
+        mvwprintw(statusPad, statusHeight - 1, 0, line.c_str(), "%s");
+        wattroff(statusPad, COLOR_PAIR(1));
+        wattroff(statusPad, COLOR_PAIR(12));
+
+        prefresh(statusPad, 0, 0, height - statusHeight, 0, height - 1, width - 1);
     }
 }
 
@@ -661,42 +723,45 @@ Returns:
  */
 
 {
+    leaveok(statusPad, false);
+
     clear();
 
-    wattron(statusWindow, COLOR_PAIR(1));
-    wprintw(statusWindow, "Find: ");
+    wmove(statusPad, statusHeight - 1, 0);
+    wattron(statusPad, COLOR_PAIR(1));
+    wprintw(statusPad, "Find: ");
 
-    wattroff(statusWindow, COLOR_PAIR(1));
-    if (findTxt.size() > width / 3)
-        wprintw(statusWindow, findTxt.substr(findTxt.size() - (width / 3) - startX, width / 3).c_str(), "%s");
+    wattroff(statusPad, COLOR_PAIR(1));
+    if ((int)findTxt.size() > width / 3)
+        wprintw(statusPad, findTxt.substr((int)findTxt.size() - (width / 3) - startX, width / 3).c_str(), "%s");
     else
-        wprintw(statusWindow, findTxt.c_str(), "%s");
-    wprintw(statusWindow, "     ");
+        wprintw(statusPad, findTxt.c_str(), "%s");
+    wprintw(statusPad, "     ");
 
-    wattron(statusWindow, COLOR_PAIR(1));
-    wprintw(statusWindow, "Replace: ");
+    wattron(statusPad, COLOR_PAIR(1));
+    wprintw(statusPad, "Replace: ");
 
-    wattroff(statusWindow, COLOR_PAIR(1));
-    if (replaceTxt.size() > width / 3)
-        wprintw(statusWindow, replaceTxt.substr(replaceTxt.size() - (width / 3) - startX, width / 3).c_str(), "%s");
+    wattroff(statusPad, COLOR_PAIR(1));
+    if ((int)replaceTxt.size() > width / 3)
+        wprintw(statusPad, replaceTxt.substr((int)replaceTxt.size() - (width / 3) - startX, width / 3).c_str(), "%s");
     else
-        wprintw(statusWindow, replaceTxt.c_str(), "%s");
+        wprintw(statusPad, replaceTxt.c_str(), "%s");
 
-    wattron(statusWindow, COLOR_PAIR(1));
-    mvwprintw(statusWindow, 0, width - (9 + to_string(matches).length()), "Matches: ");
+    wattron(statusPad, COLOR_PAIR(1));
+    mvwprintw(statusPad, statusHeight - 1, width - (9 + to_string(matches).length()), "Matches: ");
 
-    wattroff(statusWindow, COLOR_PAIR(1));
-    mvwprintw(statusWindow, 0, width - to_string(matches).length(), to_string(matches).c_str(), "%s");
+    wattroff(statusPad, COLOR_PAIR(1));
+    mvwprintw(statusPad, statusHeight - 1, width - to_string(matches).length(), to_string(matches).c_str(), "%s");
 
     if (state == "find")
     {
-        wmove(statusWindow, 0, cursorX + 6);
+        wmove(statusPad, statusHeight - 1, cursorX + 6);
     }
     else if (state == "replace")
     {
-        wmove(statusWindow, 0, cursorX + min((int)findTxt.size(), width / 3) + 20);
+        wmove(statusPad, statusHeight - 1, cursorX + min((int)findTxt.size(), width / 3) + 20);
     }
-    wrefresh(statusWindow);
+    prefresh(statusPad, 0, 0, height - statusHeight, 0, height - 1, width - 1);
 }
 
 void StatusBar::resetStatus()
@@ -713,10 +778,16 @@ Returns:
     replaceTxt = "";
     filenameTxt = "";
     confirmTxt = "";
+    terminalTxt.clear();
+    terminalStack.clear();
+    cmdHistory.clear();
+    currentCmd = 0;
     matches = 0;
     cursorX = 0;
     lineX = 0;
     startX = 0;
+    statusHeight = 1;
+    cmdHistory.push_back("");
 }
 
 void StatusBar::saveAs()
@@ -728,18 +799,21 @@ Returns:
  */
 
 {
+    leaveok(statusPad, false);
+
     clear();
-
-    wattron(statusWindow, COLOR_PAIR(1));
-    wprintw(statusWindow, "File Name: ");
-    wattroff(statusWindow, COLOR_PAIR(1));
-    if (filenameTxt.size() > width - 15)
-        mvwprintw(statusWindow, 0, 11, filenameTxt.substr(filenameTxt.size() - (width - 15) - startX, width - 15).c_str(), "%s");
+    wmove(statusPad, statusHeight - 1, 0);
+    wattron(statusPad, COLOR_PAIR(1));
+    wprintw(statusPad, "File Name: ");
+    wattroff(statusPad, COLOR_PAIR(1));
+    if ((int)filenameTxt.size() > (int)width - 15)
+        mvwprintw(statusPad, statusHeight - 1, 11, filenameTxt.substr((int)filenameTxt.size() - (width - 15) - startX, width - 15).c_str(), "%s");
     else
-        mvwprintw(statusWindow, 0, 11, filenameTxt.c_str(), "%s");
+        mvwprintw(statusPad, statusHeight - 1, 11, filenameTxt.c_str(), "%s");
 
-    wmove(statusWindow, 0, cursorX + 11);
-    wrefresh(statusWindow);
+    wmove(statusPad, statusHeight - 1, cursorX + 11);
+
+    prefresh(statusPad, 0, 0, height - statusHeight, 0, height - 1, width - 1);
 }
 
 void StatusBar::confirm()
@@ -751,24 +825,151 @@ Returns:
  */
 
 {
-    clear();
+    leaveok(statusPad, false);
 
-    wattron(statusWindow, COLOR_PAIR(1));
+    clear();
+    wattron(statusPad, COLOR_PAIR(1));
     if (state == "quit")
     {
-        wprintw(statusWindow, "Quit Without Saving? (y/n): ");
-        wattroff(statusWindow, COLOR_PAIR(1));
-        mvwprintw(statusWindow, 0, 28, confirmTxt.c_str(), "%s");
-        wmove(statusWindow, 0, cursorX + 28);
+        wmove(statusPad, statusHeight - 1, 0);
+        wprintw(statusPad, "Quit Without Saving? (y/n): ");
+        wattroff(statusPad, COLOR_PAIR(1));
+        mvwprintw(statusPad, statusHeight - 1, 28, confirmTxt.c_str(), "%s");
+        wmove(statusPad, statusHeight - 1, cursorX + 28);
     }
     else if (state == "save")
     {
-        wprintw(statusWindow, "Overwrite File? (y/n): ");
-        wattroff(statusWindow, COLOR_PAIR(1));
-        mvwprintw(statusWindow, 0, 23, confirmTxt.c_str(), "%s");
-        wmove(statusWindow, 0, cursorX + 23);
+        wmove(statusPad, statusHeight - 1, 0);
+        wprintw(statusPad, "Overwrite File? (y/n): ");
+        wattroff(statusPad, COLOR_PAIR(1));
+        mvwprintw(statusPad, statusHeight - 1, 23, confirmTxt.c_str(), "%s");
+        wmove(statusPad, statusHeight - 1, cursorX + 23);
     }
-    wrefresh(statusWindow);
+
+    prefresh(statusPad, 0, 0, height - statusHeight, 0, height - 1, width - 1);
+}
+
+void StatusBar::terminal()
+{
+    leaveok(statusPad, false);
+
+    statusHeight = 6;
+
+    clear();
+    int i = 0;
+    for (auto &l : terminalStack)
+    {
+        mvwprintw(statusPad, statusHeight + i, 0, l.c_str(), "%s");
+        i++;
+    }
+    mvwprintw(statusPad, statusHeight + i, 0, "> ");
+    if ((int)terminalTxt.size() > width - 10)
+        wprintw(statusPad, terminalTxt.substr((int)terminalTxt.size() - (width - 10) - startX, width - 10).c_str(), "%s");
+    else
+        wprintw(statusPad, terminalTxt.c_str(), "%s");
+
+    wmove(statusPad, statusHeight + i, cursorX + 2);
+
+    if ((int)terminalStack.size() >= statusHeight)
+    {
+        scroll = (scroll < statusHeight) ? statusHeight : scroll;
+        scroll = ((scroll - statusHeight) > ((int)(terminalStack.size() + 1) - statusHeight)) ? terminalStack.size() + 1 : scroll;
+    }
+
+    prefresh(statusPad, scroll, 0, height - statusHeight, 0, height - 1, width - 1);
+}
+
+void StatusBar::runCommand(std::string dir)
+{
+    error_code ec;
+    if (!filesystem::is_directory(dir, ec))
+        dir = dir.substr(0, dir.find_last_of("/"));
+
+    for (int i = 0; i < (1 + floor((int)terminalTxt.size() / (int)(width - 10))); i++)
+    {
+        if (i == 0)
+            terminalStack.push_back("> " + terminalTxt.substr(0 + (width - 10) * i, width - 10));
+        else
+            terminalStack.push_back("  " + terminalTxt.substr(0 + (width - 10) * i, width - 10));
+    }
+
+    cmdHistory.pop_back();
+    cmdHistory.push_back(terminalTxt);
+    cmdHistory.push_back("");
+
+    if (terminalTxt == "clear" || terminalTxt == "cls")
+    {
+        terminalStack.clear();
+        scroll = terminalStack.size() + 1;
+        terminalTxt = "";
+        cursorX = 0;
+        startX = 0;
+        lineX = 0;
+        return;
+    }
+
+    currentCmd = cmdHistory.size() - 1;
+    std::string copyCmd = "cd " + dir + " && " + terminalTxt;
+    FILE *pipe = popen((copyCmd + " 2>&1").c_str(), "r");
+
+    if (!pipe)
+    {
+        terminalStack.push_back("Failed to start command");
+        return;
+    }
+    else
+    {
+        char buffer[256];
+
+        while (fgets(buffer, sizeof(buffer), pipe))
+        {
+            std::string cmd(buffer);
+            for (int i = 0; i < (1 + floor((int)cmd.size() / (int)(width - 10))); i++)
+                terminalStack.push_back(cmd.substr(0 + (width - 10) * i, width - 10));
+        }
+    }
+
+    pclose(pipe);
+
+    scroll = terminalStack.size() + 1;
+    terminalTxt = "";
+    cursorX = 0;
+    startX = 0;
+    lineX = 0;
+}
+
+void StatusBar::previousCmd()
+{
+    currentCmd = (currentCmd > 0) ? currentCmd - 1 : 0;
+    terminalTxt = cmdHistory[currentCmd];
+    cursorX = min((int)terminalTxt.size(), width - 10);
+    lineX = terminalTxt.size();
+    startX = 0;
+}
+
+void StatusBar::nextCmd()
+{
+    currentCmd = (currentCmd < (int)cmdHistory.size() - 1) ? currentCmd + 1 : cmdHistory.size() - 1;
+    terminalTxt = cmdHistory[currentCmd];
+    cursorX = min((int)terminalTxt.size(), width - 10);
+    lineX = terminalTxt.size();
+    startX = 0;
+}
+
+void StatusBar::scrollUpTerminal()
+{
+    if ((int)terminalStack.size() >= statusHeight)
+    {
+        scroll -= 1;
+    }
+}
+
+void StatusBar::scrollDownTerminal()
+{
+    if ((int)terminalStack.size() >= statusHeight)
+    {
+        scroll += 1;
+    }
 }
 
 void StatusBar::clear()
@@ -780,5 +981,5 @@ Returns:
  */
 
 {
-    werase(statusWindow);
+    werase(statusPad);
 }

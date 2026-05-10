@@ -21,6 +21,7 @@
 #define CUSTOM_OTHER 18
 #define CUSTOM_ERROR 19
 #define CUSTOM_HIGHLIGHT 20
+#define CUSTOM_BG 21
 
 using namespace std;
 

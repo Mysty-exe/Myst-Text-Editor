@@ -198,16 +198,10 @@ Returns:
  */
 
 {
-    for (int i = dir.size(); i >= 0; i--)
-    {
-        if (dir[i] == '.')
-        {
-            dir = dir.substr(0, dir.find_last_of("/"));
-            break;
-        }
-        if (dir[i] == '/')
-            break;
-    }
+    error_code ec;
+    if (!filesystem::is_directory(dir, ec))
+        dir = dir.substr(0, dir.find_last_of("/"));
+
     currentDirectory = dir;
 }
 
@@ -223,6 +217,7 @@ Returns:
     this->width = width;
     this->height = height;
 
+    wbkgd(menu, COLOR_PAIR(1));
     werase(menu);
     update_panels();
     doupdate();
@@ -232,8 +227,9 @@ Returns:
     delwin(menu);
     menu = newwin(height - 10, width - 20, 5, 10);
     menuPanel = new_panel(menu);
+
     filesPad = newpad(height - 10, width - 20);
-    box(menu, 0, 0);
+    wbkgd(filesPad, COLOR_PAIR(1));
 
     prefresh(filesPad,
              0, 0,
@@ -241,8 +237,8 @@ Returns:
              5 + (height - 10), 10 + longestFile);
 
     keypad(menu, true);
-    update_panels();
-    doupdate();
+    // update_panels();
+    // doupdate();
 }
 
 vector<Button> Menu::getButtons()

@@ -200,7 +200,6 @@ Returns:
     wattron(win, COLOR_PAIR(1));
     mvwprintw(win, 2, 4, "Press CTRL-T To Exit");
     wattroff(win, COLOR_PAIR(1));
-    int i = 0;
 
     int inc = 4;
     for (Button button : buttons)

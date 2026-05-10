@@ -46,7 +46,7 @@ Returns:
     keypad(stdscr, true);
     keypad(win, true);
     keypad(editor.textPad, true);
-    keypad(status.statusWindow, true);
+    keypad(status.statusPad, true);
     keypad(menu.menu, true);
     nodelay(editor.textPad, true);
 }
@@ -56,6 +56,9 @@ void App::updateDimensions()
     getmaxyx(stdscr, height, width);
     this->width = width;
     this->height = height;
+
+    clear();
+    refresh();
 
     delwin(win);
     win = newwin(height - 5, width - 10, 2.5, 5);
@@ -216,6 +219,7 @@ Returns:
 {
     if (color == "Arctic Horizon")
     {
+        init_color(CUSTOM_BG, 120, 140, 180);
         init_color(CUSTOM_MAIN, 431, 458, 522);
         init_color(CUSTOM_TEXT, 1000, 1000, 1000);
         init_color(CUSTOM_KEYWORD, 506, 631, 757);
@@ -232,6 +236,7 @@ Returns:
     }
     else if (color == "Twilight Cascade")
     {
+        init_color(CUSTOM_BG, 100, 80, 160);
         init_color(CUSTOM_MAIN, 250, 250, 350);
         init_color(CUSTOM_TEXT, 850, 850, 950);
         init_color(CUSTOM_KEYWORD, 700, 300, 900);
@@ -248,6 +253,7 @@ Returns:
     }
     else if (color == "Crimson Ember")
     {
+        init_color(CUSTOM_BG, 140, 70, 70);
         init_color(CUSTOM_MAIN, 300, 250, 250);
         init_color(CUSTOM_TEXT, 900, 800, 800);
         init_color(CUSTOM_KEYWORD, 850, 200, 200);
@@ -264,6 +270,7 @@ Returns:
     }
     else if (color == "Azure Mist")
     {
+        init_color(CUSTOM_BG, 80, 120, 180);
         init_color(CUSTOM_MAIN, 250, 300, 400);
         init_color(CUSTOM_TEXT, 800, 900, 1000);
         init_color(CUSTOM_KEYWORD, 300, 600, 900);
@@ -280,6 +287,7 @@ Returns:
     }
     else if (color == "Verdant Glow")
     {
+        init_color(CUSTOM_BG, 80, 140, 80);
         init_color(CUSTOM_MAIN, 300, 600, 300);
         init_color(CUSTOM_TEXT, 800, 900, 800);
         init_color(CUSTOM_KEYWORD, 500, 700, 300);
@@ -296,6 +304,7 @@ Returns:
     }
     else if (color == "Earthy Brown")
     {
+        init_color(CUSTOM_BG, 120, 80, 40);
         init_color(CUSTOM_MAIN, 300, 180, 90);
         init_color(CUSTOM_TEXT, 600, 400, 200);
         init_color(CUSTOM_KEYWORD, 800, 500, 150);
@@ -311,18 +320,18 @@ Returns:
         init_color(CUSTOM_HIGHLIGHT, 950, 800, 400);
     }
 
-    init_pair(1, CUSTOM_MAIN, -1);
-    init_pair(2, CUSTOM_TEXT, -1);
-    init_pair(3, CUSTOM_KEYWORD, -1);
-    init_pair(4, CUSTOM_STRING, -1);
-    init_pair(5, CUSTOM_COMMENT, -1);
-    init_pair(6, CUSTOM_NUMBER, -1);
-    init_pair(7, CUSTOM_DELIMITER, -1);
-    init_pair(8, CUSTOM_OPERATOR, -1);
-    init_pair(9, CUSTOM_SPECIAL, -1);
-    init_pair(10, CUSTOM_PUNCTUATION, -1);
-    init_pair(11, CUSTOM_OTHER, -1);
-    init_pair(12, CUSTOM_ERROR, -1);
+    init_pair(1, CUSTOM_MAIN, CUSTOM_BG);
+    init_pair(2, CUSTOM_TEXT, CUSTOM_BG);
+    init_pair(3, CUSTOM_KEYWORD, CUSTOM_BG);
+    init_pair(4, CUSTOM_STRING, CUSTOM_BG);
+    init_pair(5, CUSTOM_COMMENT, CUSTOM_BG);
+    init_pair(6, CUSTOM_NUMBER, CUSTOM_BG);
+    init_pair(7, CUSTOM_DELIMITER, CUSTOM_BG);
+    init_pair(8, CUSTOM_OPERATOR, CUSTOM_BG);
+    init_pair(9, CUSTOM_SPECIAL, CUSTOM_BG);
+    init_pair(10, CUSTOM_PUNCTUATION, CUSTOM_BG);
+    init_pair(11, CUSTOM_OTHER, CUSTOM_BG);
+    init_pair(12, CUSTOM_ERROR, CUSTOM_BG);
 
     init_pair(13, CUSTOM_MAIN, CUSTOM_HIGHLIGHT);
     init_pair(14, CUSTOM_TEXT, CUSTOM_HIGHLIGHT);
@@ -336,6 +345,7 @@ Returns:
     init_pair(22, CUSTOM_PUNCTUATION, CUSTOM_HIGHLIGHT);
     init_pair(23, CUSTOM_OTHER, CUSTOM_HIGHLIGHT);
     init_pair(24, CUSTOM_ERROR, CUSTOM_HIGHLIGHT);
+    init_pair(25, CUSTOM_BG, -1);
 }
 
 void App::displayLogo()
@@ -349,11 +359,16 @@ Returns:
 {
     curs_set(0);
 
+    bkgd(COLOR_PAIR(1));
+    clear();
+    refresh();
+
     string text;
     int tempY = ((height - 10) / 2) - (16 / 2);
 
     fstream readFile(projectPath + "/resources/logo.txt");
-
+    wbkgd(win, COLOR_PAIR(1));
+    werase(win);
     box(win, 0, 0);
 
     while (getline(readFile, text))
@@ -369,10 +384,10 @@ Returns:
 
     readFile.close();
     wrefresh(win);
+
     getch();
 
-    // werase(win);
-    // wrefresh(win);
+    wrefresh(win);
 }
 
 void App::checkForSpecialChars(int character)
@@ -472,6 +487,16 @@ Returns:
 
     case (67 & 0x1f):
         editor.ctrlC();
+        break;
+
+    case (82 & 0x1f):
+        werase(editor.linesPad);
+        werase(editor.textPad);
+        wrefresh(editor.linesPad);
+        wrefresh(editor.textPad);
+        status.setState("terminal");
+        editor.writeToScreen(status);
+        MODE = 8;
         break;
 
     case (70 & 0x1f):
@@ -618,15 +643,29 @@ Returns:
     switch (character)
     {
     case KEY_MOUSE:
-        if (getmouse(&event) == OK && (status.getState() == "find" || status.getState() == "replace"))
+        if (getmouse(&event) == OK)
         {
-            if (event.bstate & BUTTON4_PRESSED)
+            if ((status.getState() == "find" || status.getState() == "replace"))
             {
-                editor.scrollUp();
+                if (event.bstate & BUTTON4_PRESSED)
+                {
+                    editor.scrollUp();
+                }
+                else if (event.bstate & BUTTON5_PRESSED)
+                {
+                    editor.scrollDown();
+                }
             }
-            else if (event.bstate & BUTTON5_PRESSED)
+            if (event.y > (height - status.getStatusHeight()) && status.getState() == "terminal")
             {
-                editor.scrollDown();
+                if (event.bstate & BUTTON4_PRESSED)
+                {
+                    status.scrollUpTerminal();
+                }
+                else if (event.bstate & BUTTON5_PRESSED)
+                {
+                    status.scrollDownTerminal();
+                }
             }
         }
         break;
@@ -641,6 +680,16 @@ Returns:
         status.backspace();
         break;
 
+    case KEY_UP:
+        if (status.getState() == "terminal")
+            status.previousCmd();
+        break;
+
+    case KEY_DOWN:
+        if (status.getState() == "terminal")
+            status.nextCmd();
+        break;
+
     case 9:
         status.tab();
         break;
@@ -650,13 +699,22 @@ Returns:
         {
             editor.setState("");
             status.resetStatus();
-            editor.writeToScreen(status);
             MODE = 1;
         }
         break;
 
     case (86 & 0x1f):
         status.ctrlV();
+        break;
+
+    case (82 & 0x1f):
+        if (status.getState() == "terminal")
+        {
+            status.resetStatus();
+            werase(status.statusPad);
+            wrefresh(status.statusPad);
+            MODE = 1;
+        }
         break;
 
     case 10:
@@ -725,6 +783,8 @@ Returns:
                 MODE = 1;
             }
         }
+        else if (MODE == 8)
+            status.runCommand(editor.getFile().getDirectory());
         break;
 
     case KEY_LEFT:
@@ -1098,9 +1158,8 @@ Returns:
         }
         else
         {
-            // wrefresh(editor.linesPad);
-            // wrefresh(editor.textPad);
-            // wrefresh(status.statusWindow);
+            wrefresh(editor.linesPad);
+            wrefresh(editor.textPad);
         }
     }
 
@@ -1137,8 +1196,12 @@ Returns:
     {
         status.confirm();
     }
+    else if (MODE == 8)
+    {
+        status.terminal();
+    }
 
-    int character = wgetch(status.statusWindow);
+    int character = wgetch(status.statusPad);
 
     // Check if character is inputtable
     if (character >= 32 && character <= 126)
@@ -1172,6 +1235,7 @@ Returns:
 {
     curs_set(0);
     wresize(menu.menu, height - 10, width - 20);
+    wbkgd(menu.menu, COLOR_PAIR(1));
     menu.displayButtons();
     menu.displayText(menu.getMenuText(editor));
     box(menu.menu, 0, 0);
@@ -1196,6 +1260,8 @@ Returns:
 {
     curs_set(0);
 
+    wbkgd(menu.menu, COLOR_PAIR(1));
+    wbkgd(menu.filesPad, COLOR_PAIR(1));
     werase(menu.menu);
     update_panels();
     wresize(menu.menu, height - 10, menu.getLongestFile());
@@ -1229,6 +1295,7 @@ Returns:
 {
     curs_set(0);
 
+    wbkgd(menu.menu, COLOR_PAIR(1));
     wresize(menu.menu, height - 10, width - 20);
     menu.displayButtons();
     menu.displayText(menu.getPreferencesText(settings));
@@ -1272,7 +1339,7 @@ Returns:
         {
             editorMode();
         }
-        else if (MODE == 2 || MODE == 6 || MODE == 7)
+        else if (MODE == 2 || MODE == 6 || MODE == 7 || MODE == 8)
         {
             statusMode();
         }
